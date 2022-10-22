@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Windows.Forms;
 
 namespace radiation_pattern
@@ -10,34 +11,49 @@ namespace radiation_pattern
         private double _l;
         private double _k;
         private double _y;
+        private double _r;
+        private bool[,] _enabledEmitters;
+        private List<Emitter> _emittersList;
+        private Vector[,] _intensityValues;
+        private Drawing _drawing;
 
-        public double D => _k * _l;
+        private double D => _k * _l;
+        public int Size { get; }
+        public int M { get; }
+        public int N { get; }
 
-        public double R { get; set; }
-        public int Size { get; set; }
-        public int M { get; set; }
-        public int N { get; set; }
 
-        public Vector[,] Intensity;
-        public List<Emitter> Emitters;
-        public DrawingPlant DrawingPlant;
-
+        /// <summary>
+        /// Конструктор.
+        /// </summary>
+        /// <param name="size">Размер диаграммы направленности в точках.</param>
+        /// <param name="m">Размер сетки площадки по оси X.</param>
+        /// <param name="n">Размер секки площадки по оси Y.</param>
+        /// <param name="r">Радиус полусферы.</param>
+        /// <param name="a">Амплитуда волны.</param>
+        /// <param name="l">Длина волны.</param>
+        /// <param name="k">Волновое число.</param>
+        /// <param name="y">Коэффициент затухания волны.</param>
         public RadiationPattern(int size, int m, int n, double r, double a, double l, double k, double y = 1)
         {
             _a = a;
             _l = l;
             _k = k;
             _y = y;
+            _r = r;
 
             Size = size;
             M = m;
             N = n;
-            R = r;
 
-            Intensity = new Vector[Size, Size];
-            Emitters = new List<Emitter>();
+            _enabledEmitters = new bool[M, N];
+            _intensityValues = new Vector[Size, Size];
+            _emittersList = new List<Emitter>();
         }
 
+        /// <summary>
+        /// Расчёт интенсивности.
+        /// </summary>
         public void CalculateIntensity()
         {
             var deltaX = M * D / 2.0;
@@ -52,64 +68,80 @@ namespace radiation_pattern
                 var phi = 2 * Math.PI * j / (Size - 1);
 
                 // Координаты точки на полусфере.
-                var x = deltaX + R * Math.Sin(teta) * Math.Cos(phi);
-                var y = deltaY + R * Math.Sin(teta) * Math.Sin(phi);
-                var z = R * Math.Cos(teta);
+                var x = deltaX + _r * Math.Sin(teta) * Math.Cos(phi);
+                var y = deltaY + _r * Math.Sin(teta) * Math.Sin(phi);
+                var z = _r * Math.Cos(teta);
                 var point = new Vector(x, y, z);
 
                 var vecIntensity = Vector.Zero;
-                Emitters.ForEach(emitter => vecIntensity += emitter.Intensity(point));
+                _emittersList.ForEach(emitter => vecIntensity += emitter.Intensity(point));
 
-                Intensity[i, j] = new Vector(point.X, point.Y, vecIntensity.Magnitude());
+                _intensityValues[i, j] = new Vector(point.X, point.Y, vecIntensity.Magnitude());
             }
         }
 
-        public void InitialDrawingPlant(PictureBox pictureBox)
+        /// <summary>
+        /// Отрисовка площадки с излучателями.
+        /// </summary>
+        /// <param name="pictureBox">Элемент pictureBox, в котором будет отрисовываться элемент.</param>
+        public void DrawingPlant(PictureBox pictureBox)
         {
-            DrawingPlant = new DrawingPlant(pictureBox, 0, 0, M, N)
-            {
-                EnabledEmitters = new bool[M, N]
-            };
-            DrawingPlant.Clear();
+            _drawing = new Drawing(pictureBox, M, N);
+            _drawing.DrawGrid(Color.White, _enabledEmitters);
         }
-        
+
+        /// <summary>
+        /// Добавление излучателя.
+        /// </summary>
+        /// <param name="pointScreen">Координата излучения.</param>
         public void AddEmitter(PointD pointScreen)
         {
             var posEmitter = GetPosEmitter(pointScreen, true);
-            Emitters.Add(new Emitter(posEmitter, _a, _l, _k, _y));
+            _emittersList.Add(new Emitter(posEmitter, _a, _l, _k, _y));
         }
 
+        /// <summary>
+        /// Удаление излучателя.
+        /// </summary>
+        /// <param name="pointScreen">Координата размещения.</param>
         public void DeleteEmitter(PointD pointScreen)
         {
             var posEmitter = GetPosEmitter(pointScreen, false);
             var idx = -1;
-            for (var i = 0; i < Emitters.Count; i++)
-                if (Emitters[i].Pos == posEmitter)
+            for (var i = 0; i < _emittersList.Count; i++)
+                if (_emittersList[i].Pos == posEmitter)
                 {
                     idx = i;
                     break;
                 }
 
-            if (idx >= 0) Emitters.RemoveAt(idx);
+            if (idx >= 0)
+                _emittersList.RemoveAt(idx);
         }
 
+        /// <summary>
+        /// Получение истинной координаты излучателя, а также переключение его состояния.
+        /// </summary>
+        /// <param name="pointScreen">Координата размещения.</param>
+        /// <param name="isEnabled">Состояние излучателя.</param>
+        /// <returns></returns>
         private PointD GetPosEmitter(PointD pointScreen, bool isEnabled)
         {
             pointScreen.X *= D * M;
-            pointScreen.Y *= D * M;
+            pointScreen.Y *= D * N;
 
             var posEmitter = PointD.Empty;
-            for (var x = 0; x < M; x++)
-            for (var y = 0; y < N; y++)
+            for (var i = 0; i < M; i++)
+            for (var j = 0; j < N; j++)
             {
-                if (pointScreen.X >= x * D && pointScreen.X < (x + 1) * D &&
-                    pointScreen.Y >= y * D && pointScreen.Y < (y + 1) * D &&
-                    isEnabled
-                        ? !DrawingPlant.EnabledEmitters[x, y]
-                        : DrawingPlant.EnabledEmitters[x, y])
+                if (pointScreen.X >= i * D && pointScreen.X < (i + 1) * D &&
+                    pointScreen.Y >= j * D && pointScreen.Y < (j + 1) * D &&
+                    (isEnabled
+                        ? !_enabledEmitters[i, j]
+                        : _enabledEmitters[i, j]))
                 {
-                    DrawingPlant.EnabledEmitters[x, y] = isEnabled;
-                    posEmitter = new PointD(x * D + D / 2, y * D + D / 2);
+                    _enabledEmitters[i, j] = isEnabled;
+                    posEmitter = new PointD(i * D + D / 2, j * D + D / 2);
                 }
             }
 

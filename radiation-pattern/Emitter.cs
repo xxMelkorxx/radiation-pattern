@@ -18,7 +18,7 @@ namespace radiation_pattern
             _k = k;
             _y = y;
 
-            Pos = new PointD(pos.X, pos.Y);
+            Pos = pos;
         }
 
         public Vector Intensity(Vector point)
