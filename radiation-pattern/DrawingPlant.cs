@@ -4,14 +4,14 @@ using System.Windows.Forms;
 
 namespace radiation_pattern
 {
-    public class Drawing
+    public class DrawingPlant
     {
         private Graphics _graphics;
         private readonly double _alpha, _beta;
         private int _m;
         private int _n;
 
-        public Drawing(PictureBox pB, int m, int n)
+        public DrawingPlant(PictureBox pB, int m, int n)
         {
             _m = m;
             _n = n;

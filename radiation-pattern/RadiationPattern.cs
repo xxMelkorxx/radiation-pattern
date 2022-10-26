@@ -15,7 +15,7 @@ namespace radiation_pattern
         private bool[,] _enabledEmitters;
         private List<Emitter> _emittersList;
         private Vector[,] _intensityValues;
-        private Drawing _drawing;
+        private DrawingPlant _drawingPlant;
 
         private double D => _k * _l;
         public int Size { get; }
@@ -84,10 +84,10 @@ namespace radiation_pattern
         /// Отрисовка площадки с излучателями.
         /// </summary>
         /// <param name="pictureBox">Элемент pictureBox, в котором будет отрисовываться элемент.</param>
-        public void DrawingPlant(PictureBox pictureBox)
+        public void DrawPlant(PictureBox pictureBox)
         {
-            _drawing = new Drawing(pictureBox, M, N);
-            _drawing.DrawGrid(Color.White, _enabledEmitters);
+            _drawingPlant = new DrawingPlant(pictureBox, M, N);
+            _drawingPlant.DrawGrid(Color.White, _enabledEmitters);
         }
 
         /// <summary>
