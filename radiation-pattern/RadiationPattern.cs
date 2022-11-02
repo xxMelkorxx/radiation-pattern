@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Numerics;
 using System.Windows.Forms;
 
 namespace radiation_pattern
@@ -14,13 +15,13 @@ namespace radiation_pattern
         private double _r;
         private bool[,] _enabledEmitters;
         private List<Emitter> _emittersList;
-        private Vector[,] _intensityValues;
         private DrawingPlant _drawingPlant;
 
         private double D => _k * _l;
         public int Size { get; }
         public int M { get; }
         public int N { get; }
+        public double[,] IntensityValues;
 
 
         /// <summary>
@@ -47,7 +48,7 @@ namespace radiation_pattern
             N = n;
 
             _enabledEmitters = new bool[M, N];
-            _intensityValues = new Vector[Size, Size];
+            IntensityValues = new double[Size, Size];
             _emittersList = new List<Emitter>();
         }
 
@@ -56,6 +57,7 @@ namespace radiation_pattern
         /// </summary>
         public void CalculateIntensity()
         {
+            IntensityValues = new double[Size, Size];
             var deltaX = M * D / 2.0;
             var deltaY = N * D / 2.0;
 
@@ -71,12 +73,11 @@ namespace radiation_pattern
                 var x = deltaX + _r * Math.Sin(teta) * Math.Cos(phi);
                 var y = deltaY + _r * Math.Sin(teta) * Math.Sin(phi);
                 var z = _r * Math.Cos(teta);
-                var point = new Vector(x, y, z);
 
-                var vecIntensity = Vector.Zero;
-                _emittersList.ForEach(emitter => vecIntensity += emitter.Intensity(point));
+                var vecIntensity = 0d;
+                _emittersList.ForEach(emitter => vecIntensity += emitter.Intensity(new Vector(x, y, z)));
 
-                _intensityValues[i, j] = new Vector(point.X, point.Y, vecIntensity.Magnitude());
+                IntensityValues[i, j] = vecIntensity;
             }
         }
 
@@ -97,7 +98,9 @@ namespace radiation_pattern
         public void AddEmitter(PointD pointScreen)
         {
             var posEmitter = GetPosEmitter(pointScreen, true);
-            _emittersList.Add(new Emitter(posEmitter, _a, _l, _k, _y));
+            var newEmitter = new Emitter(posEmitter, _a, _l, _k, _y);
+            if (!_emittersList.Contains(newEmitter) && !posEmitter.Equals(PointD.Empty))
+                _emittersList.Add(newEmitter);
         }
 
         /// <summary>

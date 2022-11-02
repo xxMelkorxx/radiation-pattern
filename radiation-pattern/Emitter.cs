@@ -21,13 +21,15 @@ namespace radiation_pattern
             Pos = pos;
         }
 
-        public Vector Intensity(Vector point)
+        public double Intensity(Vector point)
         {
             var delta = point - new Vector(Pos.X, Pos.Y, 0);
             var norm = delta.Normalized();
             var r = delta.Magnitude();
-
-            return norm * _a * Math.Exp(-_y * r) * Math.Cos(2 * Math.PI * r / _l - _k * r);
+            var a = _a / r * Math.Cos(_l * r);
+            var b = Math.Sin(_l * r);
+            
+            return a * a + b * b;
         }
     }
 }
