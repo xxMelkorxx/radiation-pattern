@@ -9,6 +9,7 @@ namespace radiation_pattern
     public partial class MainForm : Form
     {
         private RadiationPattern _radiationPattern;
+        private double _max;
         private bool _isGlLoaded;
 
         public MainForm()
@@ -18,14 +19,13 @@ namespace radiation_pattern
 
         private void OnInitial(object sender, EventArgs e)
         {
-            var m = (int)nud_m.Value;
-            var n = (int)nud_n.Value;
-            var size = (int)nud_size.Value;
-            var r = (double)nud_radius.Value;
-            var l = (double)nud_wavelength.Value;
-            var k = (double)nud_k.Value;
-            
-            _radiationPattern = new RadiationPattern(size, m, n, r, 50, l, k, 1);
+            _radiationPattern = new RadiationPattern((int)nud_size.Value, (int)nud_m.Value, (int)nud_n.Value)
+            {
+                A = (double)nud_ampl.Value,
+                R = (double)nud_radius.Value,
+                L = (double)nud_wavelength.Value,
+                K = (double)nud_k.Value
+            };
             _radiationPattern.DrawPlant(pictureBox_plant);
         }
 
@@ -49,7 +49,12 @@ namespace radiation_pattern
 
         private void OnCalculate(object sender, EventArgs e)
         {
-            _radiationPattern.CalculateIntensity();
+            _radiationPattern.A = (double)nud_ampl.Value;
+            _radiationPattern.R = (double)nud_radius.Value;
+            _radiationPattern.L = (double)nud_wavelength.Value;
+            _radiationPattern.K = (double)nud_k.Value;
+            
+            _radiationPattern.CalculateIntensity(out _max);
             OnPaintGLControl(null, null);
             glControl_radiationPattern.Select();
         }
@@ -57,10 +62,10 @@ namespace radiation_pattern
         private void OnLoadGLControl(object sender, EventArgs e)
         {
             _isGlLoaded = true;
-            
+
             GL.Enable(EnableCap.DepthTest);
             GL.ClearColor(Color.Black);
-            
+
             var p = Matrix4.CreatePerspectiveFieldOfView((float)(90 * Math.PI / 180), 1, 20, 500);
             GL.MatrixMode(MatrixMode.Projection);
             GL.LoadMatrix(ref p);
@@ -74,10 +79,12 @@ namespace radiation_pattern
         private void OnPaintGLControl(object sender, PaintEventArgs e)
         {
             if (!_isGlLoaded) return;
-
-            var shift = -(_radiationPattern.Size >> 1);
             
+            var shift = _radiationPattern.Size >> 1;
+
             GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
+
+            // Отрисовка осей.
             GL.Begin(PrimitiveType.Lines);
             GL.Color3(Color.Red);
             GL.Vertex3(0, 0, 0);
@@ -89,19 +96,25 @@ namespace radiation_pattern
             GL.Vertex3(0, 0, 0);
             GL.Vertex3(0, 0, shift);
             GL.End();
-            
-            GL.Color3(Color.Coral);
-            GL.Begin(PrimitiveType.Quads);
-            for (var i = 1; i < _radiationPattern.Size; i++)
+
+            GL.Begin(PrimitiveType.Points);
+            Color color;
+            for (var i = 0; i < _radiationPattern.Size; i++)
+            for (var j = 0; j < _radiationPattern.Size; j++)
             {
-                for (var j = 0; j < _radiationPattern.Size; j++)
+                var value = _radiationPattern.IntensityValues[i, j];
+                if (_max == 0)
+                    color = Color.FromArgb(50, 50, 50);
+                else
                 {
-                    GL.Vertex3(shift + i - 1, _radiationPattern.IntensityValues[i - 1, j],shift + j);
-                    GL.Vertex3(shift + i, _radiationPattern.IntensityValues[i, j], shift + j);
-                    GL.Vertex3(shift + j, _radiationPattern.IntensityValues[j, i - 1], shift + i - 1);
-                    GL.Vertex3(shift + j, _radiationPattern.IntensityValues[j, i], shift + i);
+                    var rgb = 50 + (int)(value / _max * 150);
+                    color = Color.FromArgb(rgb, rgb, rgb);
                 }
+
+                GL.Color3(color);
+                GL.Vertex3(-shift + i, value, -shift + j);
             }
+
             GL.End();
             glControl_radiationPattern.SwapBuffers();
         }
@@ -150,7 +163,7 @@ namespace radiation_pattern
                 }
                 default: return;
             }
-            
+
             glControl_radiationPattern.Invalidate();
         }
     }

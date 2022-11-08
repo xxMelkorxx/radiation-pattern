@@ -15,7 +15,7 @@ namespace radiation_pattern
         {
             _m = m;
             _n = n;
-            
+
             var bitmap = new Bitmap(pB.Width, pB.Height);
             _graphics = Graphics.FromImage(bitmap);
             _graphics.SmoothingMode = SmoothingMode.AntiAlias;
@@ -76,7 +76,7 @@ namespace radiation_pattern
             var brush = new SolidBrush(color);
             _graphics.FillEllipse(brush, OutX(x) - OutX(width) / 2, OutY(y) - OutY(height) / 2, OutX(width), OutY(height));
         }
-        
+
         /// <summary>
         /// Отрисовка площадки с излучателями.
         /// </summary>
@@ -88,7 +88,7 @@ namespace radiation_pattern
                 DrawLine(color, i, 0, i, _n);
             for (var i = 1; i < _n; i++)
                 DrawLine(color, 0, i, _m, i);
-            
+
             for (var i = 0; i < _m; i++)
             for (var j = 0; j < _n; j++)
                 if (emittersEnabled[i, j])

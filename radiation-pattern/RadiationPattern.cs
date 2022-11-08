@@ -8,21 +8,51 @@ namespace radiation_pattern
 {
     public class RadiationPattern
     {
-        private double _a;
-        private double _l;
-        private double _k;
-        private double _y;
-        private double _r;
-        private bool[,] _enabledEmitters;
-        private List<Emitter> _emittersList;
-        private DrawingPlant _drawingPlant;
+        /// <summary>
+        /// Амплитуда волны.
+        /// </summary>
+        public double A { get; set; }
 
-        private double D => _k * _l;
+        /// <summary>
+        /// Длина волны.
+        /// </summary>
+        public double L { get; set; }
+
+        /// <summary>
+        /// Волновое число.
+        /// </summary>
+        public double K { get; set; }
+
+        /// <summary>
+        /// Радиус полусферы.
+        /// </summary>
+        public double R { get; set; }
+
+        /// <summary>
+        /// Размер поверхности в кол-ве точек.
+        /// </summary>
         public int Size { get; }
+
+        /// <summary>
+        /// Размер по ширине площадки излучателей.
+        /// </summary>
         public int M { get; }
+
+        /// <summary>
+        /// Размер по высоте площадки излучателей.
+        /// </summary>
         public int N { get; }
+
+        /// <summary>
+        /// Значения интенсивности на поверхности размером <see cref="Size"/>x<see cref="Size"/>.
+        /// </summary>
         public double[,] IntensityValues;
 
+        private bool[,] _enabledEmitters;
+        private List<PointD> _emitters;
+        private DrawingPlant _drawingPlant;
+
+        private double D => K * L;
 
         /// <summary>
         /// Конструктор.
@@ -30,33 +60,27 @@ namespace radiation_pattern
         /// <param name="size">Размер диаграммы направленности в точках.</param>
         /// <param name="m">Размер сетки площадки по оси X.</param>
         /// <param name="n">Размер секки площадки по оси Y.</param>
-        /// <param name="r">Радиус полусферы.</param>
-        /// <param name="a">Амплитуда волны.</param>
-        /// <param name="l">Длина волны.</param>
-        /// <param name="k">Волновое число.</param>
-        /// <param name="y">Коэффициент затухания волны.</param>
-        public RadiationPattern(int size, int m, int n, double r, double a, double l, double k, double y = 1)
+        public RadiationPattern(int size, int m, int n)
         {
-            _a = a;
-            _l = l;
-            _k = k;
-            _y = y;
-            _r = r;
-
             Size = size;
             M = m;
             N = n;
+            A = 10;
+            R = 100;
+            L = 1;
+            K = 0.5;
 
             _enabledEmitters = new bool[M, N];
             IntensityValues = new double[Size, Size];
-            _emittersList = new List<Emitter>();
+            _emitters = new List<PointD>();
         }
 
         /// <summary>
         /// Расчёт интенсивности.
         /// </summary>
-        public void CalculateIntensity()
+        public void CalculateIntensity(out double max)
         {
+            max = double.MinValue;
             IntensityValues = new double[Size, Size];
             var deltaX = M * D / 2.0;
             var deltaY = N * D / 2.0;
@@ -70,14 +94,24 @@ namespace radiation_pattern
                 var phi = 2 * Math.PI * j / (Size - 1);
 
                 // Координаты точки на полусфере.
-                var x = deltaX + _r * Math.Sin(teta) * Math.Cos(phi);
-                var y = deltaY + _r * Math.Sin(teta) * Math.Sin(phi);
-                var z = _r * Math.Cos(teta);
+                var x = deltaX + R * Math.Sin(teta) * Math.Cos(phi);
+                var y = deltaY + R * Math.Sin(teta) * Math.Sin(phi);
+                var z = R * Math.Cos(teta);
 
-                var vecIntensity = 0d;
-                _emittersList.ForEach(emitter => vecIntensity += emitter.Intensity(new Vector(x, y, z)));
+                var value = Complex.Zero;
+                _emitters.ForEach(emitter =>
+                {
+                    var dx = x - emitter.X;
+                    var dy = y - emitter.Y;
+                    var r = Math.Sqrt(dx * dx + dy * dy + z * z);
 
-                IntensityValues[i, j] = vecIntensity;
+                    value += A / r * (Math.Cos(2 * Math.PI * r / L) - Complex.ImaginaryOne * Math.Sin(2 * Math.PI * r / L));
+                });
+
+                var intensity = R * value.Magnitude / (_emitters.Count == 0 ? 1 : _emitters.Count);
+                max = Math.Max(max, intensity);
+
+                IntensityValues[i, j] = intensity;
             }
         }
 
@@ -97,10 +131,9 @@ namespace radiation_pattern
         /// <param name="pointScreen">Координата излучения.</param>
         public void AddEmitter(PointD pointScreen)
         {
-            var posEmitter = GetPosEmitter(pointScreen, true);
-            var newEmitter = new Emitter(posEmitter, _a, _l, _k, _y);
-            if (!_emittersList.Contains(newEmitter) && !posEmitter.Equals(PointD.Empty))
-                _emittersList.Add(newEmitter);
+            var newEmitter = GetPosEmitter(pointScreen, true);
+            if (!_emitters.Contains(newEmitter) && !newEmitter.Equals(PointD.Empty))
+                _emitters.Add(newEmitter);
         }
 
         /// <summary>
@@ -111,15 +144,15 @@ namespace radiation_pattern
         {
             var posEmitter = GetPosEmitter(pointScreen, false);
             var idx = -1;
-            for (var i = 0; i < _emittersList.Count; i++)
-                if (_emittersList[i].Pos == posEmitter)
+            for (var i = 0; i < _emitters.Count; i++)
+                if (_emitters[i] == posEmitter)
                 {
                     idx = i;
                     break;
                 }
 
             if (idx >= 0)
-                _emittersList.RemoveAt(idx);
+                _emitters.RemoveAt(idx);
         }
 
         /// <summary>
