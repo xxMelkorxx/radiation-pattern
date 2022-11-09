@@ -93,6 +93,9 @@
 			this.glControl_radiationPattern.Load += new System.EventHandler(this.OnLoadGLControl);
 			this.glControl_radiationPattern.Paint += new System.Windows.Forms.PaintEventHandler(this.OnPaintGLControl);
 			this.glControl_radiationPattern.KeyDown += new System.Windows.Forms.KeyEventHandler(this.OnKeyDownGLControl);
+			this.glControl_radiationPattern.MouseDown += new System.Windows.Forms.MouseEventHandler(this.OnMouseDownGLControl);
+			this.glControl_radiationPattern.MouseMove += new System.Windows.Forms.MouseEventHandler(this.OnMouseMoveGLControl);
+			this.glControl_radiationPattern.MouseUp += new System.Windows.Forms.MouseEventHandler(this.OnMouseDownGlControl);
 			// 
 			// groupBox_params
 			// 
@@ -137,7 +140,7 @@
 			this.nud_ampl.TabIndex = 15;
 			this.nud_ampl.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
 			this.nud_ampl.Value = new decimal(new int[] {
-            1,
+            10,
             0,
             0,
             0});

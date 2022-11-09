@@ -11,8 +11,18 @@ namespace radiation_pattern
         private RadiationPattern _radiationPattern;
         private double _max;
         private bool _isGlLoaded;
+		private Matrix4 _modelview;
+		private Vector3 _pos;
+		private Vector3 _up;
+		private Vector3 _direction;
+        private float _horizontalAngleRad;
+        private float _verticalAngleRad;
+		private Vector2 _posMouseDown;
+		private bool _isDown;
 
-        public MainForm()
+        private const float Sensitivity = 0.0001f;
+
+		public MainForm()
         {
             InitializeComponent();
         }
@@ -59,7 +69,7 @@ namespace radiation_pattern
             glControl_radiationPattern.Select();
         }
 
-        private void OnLoadGLControl(object sender, EventArgs e)
+		private void OnLoadGLControl(object sender, EventArgs e)
         {
             _isGlLoaded = true;
 
@@ -67,20 +77,24 @@ namespace radiation_pattern
             GL.ClearColor(Color.Black);
 
             var p = Matrix4.CreatePerspectiveFieldOfView((float)(90 * Math.PI / 180), 1, 20, 500);
+            
             GL.MatrixMode(MatrixMode.Projection);
             GL.LoadMatrix(ref p);
 
             var shift = (float)nud_size.Value;
-            var modelview = Matrix4.LookAt(shift, shift / 2, 0, 0, 0, 0, 0, 1, 0);
+            _pos = new Vector3(shift, shift / 2, 0);
+            _up = new Vector3(0, 1, 0);
+            _modelview = Matrix4.LookAt(_pos, Vector3.Zero, _up);
+            
             GL.MatrixMode(MatrixMode.Modelview);
-            GL.LoadMatrix(ref modelview);
+            GL.LoadMatrix(ref _modelview);
         }
 
         private void OnPaintGLControl(object sender, PaintEventArgs e)
         {
             if (!_isGlLoaded) return;
-            
-            var shift = _radiationPattern.Size >> 1;
+
+			var shift = _radiationPattern.Size >> 1;
 
             GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
 
@@ -123,48 +137,95 @@ namespace radiation_pattern
         {
             if (!_isGlLoaded) return;
 
-            switch (e.KeyCode)
+            if (e.KeyCode == Keys.W)
             {
-                case Keys.W:
-                {
-                    GL.MatrixMode(MatrixMode.Modelview);
-                    GL.Rotate(5, 0, 0, 1);
-                    break;
-                }
-                case Keys.S:
-                {
-                    GL.MatrixMode(MatrixMode.Modelview);
-                    GL.Rotate(-5, 0, 0, 1);
-                    break;
-                }
-                case Keys.A:
-                {
-                    GL.MatrixMode(MatrixMode.Modelview);
-                    GL.Rotate(5, 1, 0, 0);
-                    break;
-                }
-                case Keys.D:
-                {
-                    GL.MatrixMode(MatrixMode.Modelview);
-                    GL.Rotate(-5, 1, 0, 0);
-                    break;
-                }
-                case Keys.Q:
-                {
-                    GL.MatrixMode(MatrixMode.Modelview);
-                    GL.Rotate(5, 0, 1, 0);
-                    break;
-                }
-                case Keys.E:
-                {
-                    GL.MatrixMode(MatrixMode.Modelview);
-                    GL.Rotate(-5, 0, 1, 0);
-                    break;
-                }
-                default: return;
+                GL.MatrixMode(MatrixMode.Modelview);
+                GL.Rotate(5, 0, 0, 1);
             }
+            if (e.KeyCode == Keys.S)
+            {
+                GL.MatrixMode(MatrixMode.Modelview);
+                GL.Rotate(-5, 0, 0, 1);
+            }
+            if (e.KeyCode == Keys.A)
+            {
+                GL.MatrixMode(MatrixMode.Modelview);
+                GL.Rotate(5, 1, 0, 0);
+            }
+            if (e.KeyCode == Keys.D)
+            {
+                GL.MatrixMode(MatrixMode.Modelview);
+                GL.Rotate(-5, 1, 0, 0);
+            }
+            if (e.KeyCode == Keys.Q)
+            {
+                GL.MatrixMode(MatrixMode.Modelview);
+                GL.Rotate(5, 0, 1, 0);
+            }
+            if (e.KeyCode == Keys.E)
+            {
+                GL.MatrixMode(MatrixMode.Modelview);
+                GL.Rotate(-5, 0, 1, 0);
+            }
+            if (e.KeyCode == Keys.Oemplus)
+            {
+                GL.MatrixMode(MatrixMode.Modelview);
+                GL.Scale(1.1, 1.1, 1.1);
+            }
+            if (e.KeyCode == Keys.OemMinus)
+            {
+				GL.MatrixMode(MatrixMode.Modelview);
+				GL.Scale(0.9, 0.9, 0.9);
+			}
 
             glControl_radiationPattern.Invalidate();
         }
+
+		private void OnMouseDownGLControl(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left)
+            {
+				_posMouseDown = new Vector2(e.X, e.Y);
+                _isDown = true;
+			}
+		}
+
+        private void OnMouseDownGlControl(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left)
+                _isDown = false;
+        }
+
+        private void OnMouseMoveGLControl(object sender, MouseEventArgs e)
+        {
+			if (_isDown)
+            {
+				var stateCursor = OpenTK.Input.Mouse.GetCursorState();
+				_horizontalAngleRad += (stateCursor.X - _posMouseDown.X) * Sensitivity;
+				_verticalAngleRad += (stateCursor.Y - _posMouseDown.Y) * Sensitivity;
+                if (_verticalAngleRad > 89.0f)
+					_verticalAngleRad = 89.0f;
+                else if (_verticalAngleRad < -89.0f)
+					_verticalAngleRad = -89.0f;
+                else
+					_verticalAngleRad -= (stateCursor.X - _posMouseDown.X) * Sensitivity;
+
+				_direction = new Vector3(
+					(float)(Math.Cos(_verticalAngleRad) * Math.Sin(_horizontalAngleRad)),
+					(float)Math.Sin(_verticalAngleRad),
+					(float)(Math.Cos(_verticalAngleRad) * Math.Cos(_horizontalAngleRad))
+                    );
+				_up = Vector3.Cross(
+                    new Vector3((float)Math.Sin(_verticalAngleRad - Math.PI / 2), 0, (float)Math.Cos(_verticalAngleRad - Math.PI / 2)),
+                    _direction
+                    );
+				_modelview = Matrix4.LookAt(_pos, _direction, _up);
+                
+                GL.MatrixMode(MatrixMode.Modelview);
+                GL.LoadMatrix(ref _modelview);
+
+				glControl_radiationPattern.Invalidate();
+			}
+		}
     }
 }
