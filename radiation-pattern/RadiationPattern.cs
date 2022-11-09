@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Numerics;
 using System.Windows.Forms;
+using OpenTK;
 
 namespace radiation_pattern
 {
@@ -46,7 +47,7 @@ namespace radiation_pattern
         /// <summary>
         /// Значения интенсивности на поверхности размером <see cref="Size"/>x<see cref="Size"/>.
         /// </summary>
-        public double[,] IntensityValues;
+        public Vector3d[,] IntensityValues;
 
         private bool[,] _enabledEmitters;
         private List<PointD> _emitters;
@@ -71,7 +72,7 @@ namespace radiation_pattern
             K = 0.5;
 
             _enabledEmitters = new bool[M, N];
-            IntensityValues = new double[Size, Size];
+            IntensityValues = new Vector3d[Size, Size];
             _emitters = new List<PointD>();
         }
 
@@ -81,7 +82,7 @@ namespace radiation_pattern
         public void CalculateIntensity(out double max)
         {
             max = double.MinValue;
-            IntensityValues = new double[Size, Size];
+            IntensityValues = new Vector3d[Size, Size];
             var deltaX = M * D / 2.0;
             var deltaY = N * D / 2.0;
 
@@ -111,7 +112,7 @@ namespace radiation_pattern
                 var intensity = R * value.Magnitude / (_emitters.Count == 0 ? 1 : _emitters.Count);
                 max = Math.Max(max, intensity);
 
-                IntensityValues[i, j] = intensity;
+                IntensityValues[i, j] = new Vector3d(x, y, intensity);
             }
         }
 
