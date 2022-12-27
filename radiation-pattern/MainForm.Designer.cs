@@ -223,7 +223,7 @@
 	        this.nud_wavelength.TabIndex = 7;
 	        this.nud_wavelength.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
 	        this.nud_wavelength.Value = new decimal(new int[] { 1, 0, 0, 0 });
-	        this.nud_wavelength.ValueChanged += new System.EventHandler(this.OnCalculate);
+	        this.nud_wavelength.ValueChanged += new System.EventHandler(this.OnInitial);
 	        // 
 	        // label_wavelength
 	        // 
